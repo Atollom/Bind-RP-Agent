@@ -54,13 +54,13 @@ function DashboardContent() {
   );
 }
 
-function ComingSoonContent({ title }: { title: string }) {
+function ComingSoonContent({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="flex-1 flex items-center justify-center text-textPrimary/40">
       <div className="text-center">
         <p className="text-4xl mb-3">🚧</p>
         <p className="text-lg font-semibold">{title}</p>
-        <p className="text-sm mt-1">Este módulo estará disponible próximamente.</p>
+        <p className="text-sm mt-1">{subtitle || "Este módulo estará disponible próximamente."}</p>
         <p className="text-xs mt-3 text-textPrimary/30">
           Usa el Chat IA para consultar datos de este módulo ahora mismo.
         </p>
@@ -88,6 +88,10 @@ function AppContent() {
         return <ComingSoonContent title="Módulo de Contabilidad" />;
       case "directorio":
         return <ComingSoonContent title="Módulo de Directorio" />;
+      case "admin":
+        return <ComingSoonContent title="Admin — Alta de Clientes" subtitle="Panel para registrar nuevos clientes y su API Key de Bind ERP." />;
+      case "soporte":
+        return <ComingSoonContent title="Soporte Atollom" subtitle="Agente de soporte disponible próximamente. Mientras tanto escríbenos a contacto@atollom.com" />;
       default:
         return <DashboardContent />;
     }

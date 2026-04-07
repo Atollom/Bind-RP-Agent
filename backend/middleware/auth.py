@@ -28,10 +28,9 @@ async def get_current_user(
     settings = get_settings()
     token = credentials.credentials
 
-    # ── 1. Dev Bypass (solo development) ──────────────────────────
+    # ── 1. Dev Bypass (demo/testing — activo si DEV_BYPASS_TOKEN está configurado) ──
     if (
-        settings.APP_ENV == "development"
-        and settings.DEV_BYPASS_TOKEN
+        settings.DEV_BYPASS_TOKEN
         and token == settings.DEV_BYPASS_TOKEN
     ):
         logger.debug("Auth: dev bypass activo")
