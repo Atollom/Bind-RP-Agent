@@ -7,8 +7,7 @@ Setup: neon.tech → crear proyecto → copiar DATABASE_URL en .env
 """
 import asyncpg
 import logging
-from typing import Any, Dict, List, Optional
-from functools import lru_cache
+from typing import Dict, Optional
 
 from config import get_settings
 
@@ -109,27 +108,22 @@ async def get_user_by_email(email: str) -> Optional[Dict]:
 # OPERACIONES: API KEYS DE BIND ERP (cifradas con pgcrypto)
 # ====================================================================
 async def store_bind_api_key(tenant_id: str, api_key: str, encryption_key: str) -> None:
-    """Guarda la API Key de Bind cifrada con pgcrypto."""
+    """Guarda la API Key de Bind cifrada con pgcrypto (tabla public.bind_erp_keys en Neon)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
-            """INSERT INTO api_keys_private.bind_erp_keys (tenant_id, encrypted_token)
-               VALUES ($1, pgp_sym_encrypt($2, $3))
-               ON CONFLICT (tenant_id) DO UPDATE
-               SET encrypted_token = pgp_sym_encrypt($2, $3), updated_at = NOW()""",
+            """SELECT public.store_bind_key($1::uuid, $2, $3)""",
             tenant_id, api_key, encryption_key
         )
 
 
 async def get_bind_api_key(tenant_id: str, encryption_key: str) -> Optional[str]:
-    """Recupera y descifra la API Key de Bind."""
+    """Recupera y descifra la API Key de Bind desde Neon."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            """SELECT pgp_sym_decrypt(encrypted_token::bytea, $1) as api_key
-               FROM api_keys_private.bind_erp_keys
-               WHERE tenant_id = $2""",
-            encryption_key, tenant_id
+            """SELECT public.decrypt_bind_key($1::uuid, $2) as api_key""",
+            tenant_id, encryption_key
         )
         return row["api_key"] if row else None
 
