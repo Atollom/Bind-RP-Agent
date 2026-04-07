@@ -1,6 +1,6 @@
 import httpx
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger("atollom.bind")
 
@@ -139,8 +139,8 @@ class BindERPClient:
     # Endpoints verificados: /Inventory, /Products, /Warehouses
     # =========================================================
     async def get_inventory(self, params: Optional[Dict] = None) -> Any:
-        """Obtener niveles de stock actuales. Filtrable por almacén."""
-        return await self._request("GET", "/Inventory", params=params)
+        """Obtener productos con info de stock (Bind usa /Products para inventario)."""
+        return await self._request("GET", "/Products", params=self._build_odata_params(params, top=50))
 
     async def get_products(self, params: Optional[Dict] = None, top: int = 50, skip: int = 0) -> Any:
         """Obtener lista de productos y servicios."""
