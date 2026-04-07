@@ -6,11 +6,10 @@ pydantic-settings>=2.3.0,<3.0
 PyJWT>=2.8.0,<3.0
 passlib[bcrypt]>=1.7.4,<2.0
 
-# Base de datos (Neon / PostgreSQL)
+# Base de datos (Neon / PostgreSQL async)
 asyncpg>=0.29.0,<1.0
-psycopg2-binary>=2.9.0,<3.0
 
-# Gemini AI (SDK nuevo — google-generativeai está deprecado)
+# Gemini AI
 google-genai>=1.0.0
 
 # Cache
@@ -19,6 +18,3 @@ redis>=5.0.0,<6.0
 # Exportación (Excel + PDF)
 openpyxl>=3.1.0,<4.0
 reportlab>=4.2.0,<5.0
-
-# Supabase (opcional, legacy)
-supabase>=2.5.0,<3.0

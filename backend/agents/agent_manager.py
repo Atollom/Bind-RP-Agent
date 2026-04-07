@@ -40,7 +40,8 @@ class RouterAgent:
             "impuesto", "impuestos", "iva", "isr", "cfdi",
         ],
         "DIRECTORIO": [
-            "directorio", "contacto", "contactos", "rfc", "razón social",
+            "cliente", "clientes", "directorio", "contacto", "contactos",
+            "rfc", "razón social", "empresa", "empresas",
         ],
     }
 
