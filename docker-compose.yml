@@ -1,0 +1,72 @@
+# Atollom AI — Docker Compose
+
+services:
+  # 1. El Escudo Perimetral
+  nginx:
+    image: nginx:alpine
+    ports:
+      # Expuesto al mundo web. Las IPs públicas pegarán aquí.
+      - "80:80"
+      #- "443:443" # Preparado para SSL
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - atollom_net
+
+  # 2. El Cerebro Financiero (API)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      # Oculto y emparejado con el nombre del servicio Redis en Docker Compose
+      - REDIS_URL=redis://redis:6379/0
+      - APP_ENV=production
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - redis
+    networks:
+      - atollom_net
+    expose:
+      # Exponer solo interno a la red aisada, NO publicar a la host machine
+      - "8000"
+
+  # 3. El Dashboard
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      # Ya que Nginx rutea todo lo de /api al backend,
+      # El frontend ya no necesita un http://localhost:8000, solo la ruta local.
+      - NEXT_PUBLIC_API_URL=/api
+    networks:
+      - atollom_net
+    expose:
+      # Exponer solo interno a Nginx
+      - "3000"
+
+  # 4. Motor de Base de Tensión (Rate Limits Session)
+  redis:
+    image: redis:alpine
+    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - atollom_net
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+
+networks:
+  # Red virtual sellada
+  atollom_net:
+    driver: bridge
+
+volumes:
+  # Volumen para que Redis no pierda rate-limits si el contendor de Redis reinicia
+  redis_data:
