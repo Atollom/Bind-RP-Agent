@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import get_settings
 from routers.chat import router as chat_router
 from routers.export import router as export_router
+from routers.auth import router as auth_router
 from services.cache_manager import cache_manager
 import logging
 
@@ -27,6 +28,7 @@ app.add_middleware(
 )
 
 # Registrar routers
+app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(export_router)
 

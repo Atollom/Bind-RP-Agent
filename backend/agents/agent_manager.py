@@ -8,11 +8,7 @@ Diseñado para 600 tenants simultáneos de Bind ERP.
 from typing import Dict, Any
 import logging
 
-from services.gemini_client import (
-    classify_intent_with_gemini,
-    analyze_erp_data,
-    suggest_chart_config,
-)
+from services.gemini_client import classify_intent_with_gemini, analyze_erp_data, suggest_chart_config
 
 logger = logging.getLogger("atollom.agents")
 
@@ -187,7 +183,7 @@ class ReportGeneratorAgent:
         if raw_data.get("is_stale"):
             content += "\n\n⚠️ Datos servidos desde caché temporal para proteger tu cuota de Bind ERP."
 
-        chart_config = await suggest_chart_config(intent, data_list)
+        chart_config = suggest_chart_config(intent)
         insight = f"Se analizaron {len(data_list)} registros del módulo {intent.lower()}." if data_list else None
 
         return {
