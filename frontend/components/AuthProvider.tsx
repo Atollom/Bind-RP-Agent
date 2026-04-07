@@ -1,11 +1,6 @@
 "use client";
-import React, { createContext, useContext, useState } from "react";
-
-// ============================================================
-// 🔶 DEMO MODE — Bypass de autenticación para preview del UI
-//    Para restaurar auth real, descomentar el código original
-//    y eliminar este bloque de demo.
-// ============================================================
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface AuthContextType {
   user: any;
@@ -17,77 +12,62 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
-  loading: false,
+  loading: true,
   signOut: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [loading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  // Usuario simulado para demo
-  const demoUser = {
-    id: "demo-user-001",
-    email: "demo@atollom.ai",
-    user_metadata: { full_name: "Carlos Demo" },
-  };
-
-  const demoSession = {
-    access_token: process.env.NEXT_PUBLIC_DEV_BYPASS_TOKEN || "dev-bypass-2025",
-    user: demoUser,
-  };
+  useEffect(() => {
+    const token = localStorage.getItem("atollom_token");
+    if (!token) {
+      router.push("/login");
+      setLoading(false);
+      return;
+    }
+    // Decodificar payload del JWT (sin verificar firma — la verificación es del backend)
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const isExpired = payload.exp && payload.exp * 1000 < Date.now();
+      if (isExpired) {
+        localStorage.removeItem("atollom_token");
+        router.push("/login");
+        setLoading(false);
+        return;
+      }
+      setSession({ access_token: token });
+      setUser({ id: payload.sub, email: payload.email || "admin", role: payload.role });
+    } catch {
+      localStorage.removeItem("atollom_token");
+      router.push("/login");
+    }
+    setLoading(false);
+  }, [router]);
 
   const signOut = async () => {
-    console.log("Demo mode: signOut llamado (sin efecto)");
+    localStorage.removeItem("atollom_token");
+    setUser(null);
+    setSession(null);
+    router.push("/login");
   };
 
+  if (loading) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <AuthContext.Provider value={{ user: demoUser, session: demoSession, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
-
-// ============================================================
-// 🔒 CÓDIGO ORIGINAL (restaurar cuando Supabase esté listo):
-// ============================================================
-// import { createClient } from "@/lib/supabase";
-// import { Session, User } from "@supabase/supabase-js";
-// import { useRouter } from "next/navigation";
-//
-// export default function AuthProvider({ children }) {
-//   const [user, setUser] = useState(null);
-//   const [session, setSession] = useState(null);
-//   const [loading, setLoading] = useState(true);
-//   const router = useRouter();
-//   const supabase = createClient();
-//
-//   useEffect(() => {
-//     supabase.auth.getSession().then(({ data: { session } }) => {
-//       setSession(session);
-//       setUser(session?.user ?? null);
-//       setLoading(false);
-//       if (!session) router.push("/login");
-//     });
-//     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-//       (_event, session) => {
-//         setSession(session);
-//         setUser(session?.user ?? null);
-//         if (!session) router.push("/login");
-//       }
-//     );
-//     return () => subscription.unsubscribe();
-//   }, []);
-//
-//   const signOut = async () => {
-//     await supabase.auth.signOut();
-//     router.push("/login");
-//   };
-//
-//   return (
-//     <AuthContext.Provider value={{ user, session, loading, signOut }}>
-//       {children}
-//     </AuthContext.Provider>
-//   );
-// }

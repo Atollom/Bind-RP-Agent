@@ -5,6 +5,7 @@ import ChatDashboard from "@/components/ChatDashboard";
 import KPICards from "@/components/KPICards";
 import AuthProvider from "@/components/AuthProvider";
 import MultiChartVisualizer from "@/components/MultiChartVisualizer";
+import AdminPanel from "@/components/AdminPanel";
 
 // Datos de ejemplo para el dashboard principal (vendrán del backend en producción)
 const weeklySalesData = [
@@ -89,7 +90,7 @@ function AppContent() {
       case "directorio":
         return <ComingSoonContent title="Módulo de Directorio" />;
       case "admin":
-        return <ComingSoonContent title="Admin — Alta de Clientes" subtitle="Panel para registrar nuevos clientes y su API Key de Bind ERP." />;
+        return <AdminPanel />;
       case "soporte":
         return <ComingSoonContent title="Soporte Atollom" subtitle="Agente de soporte disponible próximamente. Mientras tanto escríbenos a contacto@atollom.com" />;
       default:

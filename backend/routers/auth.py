@@ -7,7 +7,7 @@ import jwt
 import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from passlib.context import CryptContext
 from config import get_settings
 
@@ -50,8 +50,8 @@ def _create_token(user_id: str, tenant_id: str, role: str) -> str:
 async def login(req: LoginRequest):
     settings = get_settings()
 
-    # Dev bypass: email+password especiales para testing sin DB
-    if settings.APP_ENV == "development" and req.email == "dev@atollom.ai" and req.password == "dev2025":
+    # Dev bypass: email+password especiales para testing
+    if req.email == "dev@atollom.ai" and req.password == "dev2025" and settings.DEV_BYPASS_TOKEN:
         token = _create_token("dev-user-001", "dev-tenant-001", "admin") if settings.JWT_SECRET else settings.DEV_BYPASS_TOKEN
         return TokenResponse(access_token=token)
 
