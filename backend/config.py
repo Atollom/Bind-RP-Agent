@@ -21,10 +21,10 @@ class Settings(BaseSettings):
     BIND_API_BASE_URL: str = "https://api.bind.com.mx/api"
 
     # --- Gemini AI (cerebro del agente) ---
-    # Modelo primario: gemini-2.0-flash (RPD ilimitado — ideal para 600 tenants)
+    # Modelo primario: gemini-2.5-flash-lite (RPD ILIMITADO — ideal para 600 tenants)
     # Modelo análisis: gemini-2.5-flash (10K RPD — para análisis complejos)
     GEMINI_API_KEY: str = ""
-    GEMINI_PRIMARY_MODEL: str = "gemini-2.0-flash"       # Ilimitado RPD
+    GEMINI_PRIMARY_MODEL: str = "gemini-2.5-flash-lite"  # Ilimitado RPD
     GEMINI_ANALYSIS_MODEL: str = "gemini-2.5-flash"      # Análisis profundo
     GEMINI_MAX_TOKENS: int = 2048
     GEMINI_TEMPERATURE: float = 0.2   # Bajo = datos exactos, sin alucinaciones
