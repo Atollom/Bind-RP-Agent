@@ -26,4 +26,5 @@ USER appuser
 EXPOSE 8000
 
 # Lanzar Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# 2 workers = estable en 512MB RAM (Render free). Subir a 4 en plan pago.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

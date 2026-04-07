@@ -18,10 +18,15 @@ app = FastAPI(
     version="3.0.0",
 )
 
-# CORS restringido a orígenes y métodos específicos
+# CORS: acepta Vercel + localhost
+cors_origins = settings.CORS_ORIGINS + [
+    "https://bind-rp-agent.vercel.app",
+    "https://*.vercel.app",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],

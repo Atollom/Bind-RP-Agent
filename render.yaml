@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: bind-rp-agent-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_PRIMARY_MODEL
+        value: gemini-2.0-flash
+      - key: GEMINI_ANALYSIS_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_MAX_TOKENS
+        value: "2048"
+      - key: GEMINI_TEMPERATURE
+        value: "0.2"
+      - key: BIND_API_BASE_URL
+        value: https://api.bind.com.mx/api
+      - key: BIND_API_KEY_DEV
+        sync: false
+      - key: APP_ENCRYPTION_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DEBUG
+        value: "false"
+      - key: RATE_LIMIT_MAX_REQUESTS_PER_DAY
+        value: "200"
+      - key: RATE_LIMIT_MAX_BIND_CALLS_PER_DAY
+        value: "50"
