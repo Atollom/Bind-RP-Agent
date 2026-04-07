@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { TrendingUp, Package, FileText, Users, Loader2 } from "lucide-react";
+import React, { useEffect, useState, useCallback } from "react";
+import { TrendingUp, Package, FileText, Users, Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 
 interface KPICardProps {
@@ -43,51 +43,89 @@ function KPICard({ title, value, change, changeType, icon, loading }: KPICardPro
   );
 }
 
+interface KPIData {
+  invItems: number | null;
+  clientItems: number | null;
+  invoiceItems: number | null;
+  accountItems: number | null;
+}
+
+async function fetchModule(apiUrl: string, token: string, message: string) {
+  try {
+    const res = await fetch(`${apiUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ message }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export default function KPICards() {
   const { session } = useAuth();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<KPIData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
 
-  useEffect(() => {
-    const fetchKPIs = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      try {
-        // Consultas paralelas: inventario y clientes
-        const [invRes, clientRes] = await Promise.all([
-          fetch(`${apiUrl}/api/chat`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-            body: JSON.stringify({ message: "resumen inventario productos en stock" }),
-          }),
-          fetch(`${apiUrl}/api/chat`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-            body: JSON.stringify({ message: "cuántos clientes tengo en total" }),
-          }),
-        ]);
+  const fetchKPIs = useCallback(async () => {
+    if (!session?.access_token) return;
+    setLoading(true);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const token = session.access_token;
 
-        const [invData, clientData] = await Promise.all([invRes.json(), clientRes.json()]);
+    // Consultas paralelas — 4 módulos simultáneos
+    const [invData, clientData, invoiceData, accountData] = await Promise.all([
+      fetchModule(apiUrl, token, "cuántos productos tengo en inventario"),
+      fetchModule(apiUrl, token, "cuántos clientes tengo en total"),
+      fetchModule(apiUrl, token, "cuántas facturas o ventas tengo registradas"),
+      fetchModule(apiUrl, token, "resumen de mis activos y cuentas contables"),
+    ]);
 
-        const invItems = invData?.response?.chartData?.length ?? 0;
-        const clientItems = clientData?.response?.chartData?.length ?? 0;
+    const invItems =
+      invData?.response?.chartData?.length ??
+      invData?.response?.data?.length ??
+      null;
 
-        setData({ invItems, clientItems });
-      } catch {
-        setData({ invItems: null, clientItems: null });
-      } finally {
-        setLoading(false);
-      }
-    };
+    const clientItems =
+      clientData?.response?.chartData?.length ??
+      clientData?.response?.data?.length ??
+      null;
 
-    if (session?.access_token) fetchKPIs();
+    const invoiceItems =
+      invoiceData?.response?.chartData?.length ??
+      invoiceData?.response?.data?.length ??
+      null;
+
+    const accountItems =
+      accountData?.response?.chartData?.length ??
+      accountData?.response?.data?.length ??
+      null;
+
+    setData({ invItems, clientItems, invoiceItems, accountItems });
+    setLastUpdated(new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }));
+    setLoading(false);
   }, [session]);
+
+  // Fetch inicial
+  useEffect(() => {
+    fetchKPIs();
+  }, [fetchKPIs]);
+
+  // Auto-refresh cada 5 minutos
+  useEffect(() => {
+    const interval = setInterval(fetchKPIs, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchKPIs]);
 
   const kpis = [
     {
-      title: "Ventas del Mes",
-      value: "—",
-      change: "Sin registros en Bind ERP",
-      changeType: "neutral" as const,
+      title: "Ventas / Facturas",
+      value: loading ? "—" : data?.invoiceItems != null ? `${data.invoiceItems}` : "0",
+      change: loading ? "" : data?.invoiceItems != null ? `${data.invoiceItems} registros en Bind ERP` : "Sin registros en Bind ERP",
+      changeType: (data?.invoiceItems && data.invoiceItems > 0 ? "up" : "neutral") as "up" | "neutral",
       icon: <TrendingUp size={16} className="text-accent" />,
     },
     {
@@ -98,10 +136,10 @@ export default function KPICards() {
       icon: <Package size={16} className="text-accent" />,
     },
     {
-      title: "Facturas Pendientes",
-      value: "—",
-      change: "Sin registros en Bind ERP",
-      changeType: "neutral" as const,
+      title: "Cuentas Contables",
+      value: loading ? "—" : data?.accountItems != null ? `${data.accountItems}` : "—",
+      change: loading ? "" : data?.accountItems != null ? `${data.accountItems} cuentas activas` : "Sin datos",
+      changeType: (data?.accountItems && data.accountItems > 0 ? "up" : "neutral") as "up" | "neutral",
       icon: <FileText size={16} className="text-accent" />,
     },
     {
@@ -114,10 +152,29 @@ export default function KPICards() {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {kpis.map((kpi, idx) => (
-        <KPICard key={idx} {...kpi} loading={loading && (idx === 1 || idx === 3)} />
-      ))}
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((kpi, idx) => (
+          <KPICard key={idx} {...kpi} loading={loading} />
+        ))}
+      </div>
+      {/* Footer con último update y refresh manual */}
+      <div className="flex items-center justify-end gap-2 mt-2">
+        {lastUpdated && (
+          <span className="text-[10px] text-textPrimary/30">
+            Actualizado: {lastUpdated}
+          </span>
+        )}
+        <button
+          onClick={fetchKPIs}
+          disabled={loading}
+          className="flex items-center gap-1 text-[10px] text-textPrimary/30 hover:text-accent/60 transition-colors disabled:opacity-30"
+          title="Actualizar KPIs"
+        >
+          <RefreshCw size={10} className={loading ? "animate-spin" : ""} />
+          Actualizar
+        </button>
+      </div>
     </div>
   );
 }

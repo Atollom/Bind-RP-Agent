@@ -13,6 +13,7 @@ interface Message {
   role: "user" | "system";
   content: string;
   chartData?: any[] | null;
+  rawData?: any[] | null;   // datos crudos para export aunque no haya chart
   chart_type?: string;
   intent?: string;
   is_stale?: boolean;
@@ -211,6 +212,14 @@ export default function ChatDashboard() {
           "\n\n⚠️ *Modo Contingencia: Datos servidos desde caché temporal para proteger tu cuota de Bind ERP.*";
       }
 
+      // rawData: chartData si existe, o intentar parsear del campo data del response
+      const rawData =
+        data.response?.chartData?.length > 0
+          ? data.response.chartData
+          : data.response?.data?.length > 0
+          ? data.response.data
+          : null;
+
       const systemMsg: Message = {
         id: generateId(),
         role: "system",
@@ -218,6 +227,7 @@ export default function ChatDashboard() {
           (data.response?.content || "Sin respuesta del servidor.") +
           staleNotice,
         chartData: data.response?.chartData,
+        rawData,
         chart_type: data.response?.chart_type || "bar",
         intent: data.intent,
         is_stale: data.is_stale,
@@ -350,15 +360,21 @@ export default function ChatDashboard() {
                     data={msg.chartData}
                     chartType={msg.chart_type || "bar"}
                   />
-                  {/* Export buttons */}
-                  <ExportButtons
-                    data={msg.chartData}
-                    intent={msg.intent || "DATOS"}
-                    summary={msg.content}
-                    token={session?.access_token}
-                    apiUrl={process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}
-                  />
                 </div>
+              )}
+
+              {/* Export buttons — aparecen cuando hay datos (con o sin gráfica) */}
+              {msg.role === "system" && msg.intent &&
+                msg.intent !== "SOPORTE" &&
+                msg.intent !== "DESCONOCIDO" &&
+                ((msg.rawData && msg.rawData.length > 0) || (msg.chartData && msg.chartData.length > 0)) && (
+                <ExportButtons
+                  data={msg.rawData || msg.chartData || []}
+                  intent={msg.intent}
+                  summary={msg.content}
+                  token={session?.access_token}
+                  apiUrl={process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}
+                />
               )}
             </div>
           </div>
