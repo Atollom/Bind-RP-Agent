@@ -1,82 +1,90 @@
 ---
-name: Checkpoint — Fixes aplicados, listo para pruebas Bind
-description: 3 blockers resueltos. Solo falta pegar la API Key real de Bind en backend/.env
+name: Checkpoint — Render PORT fix, esperando redeploy
+description: Estado exacto al agotar tokens. Render redeploy en curso.
 type: project
 ---
 
-# Checkpoint — 2026-04-06 (POST-FIX)
+# Checkpoint — 2026-04-06 (URGENTE — FIN DE SESIÓN)
 
-## Estado: LISTO PARA PRUEBAS — Solo falta la API Key real
+## Estado de cada servicio
 
-## Fixes Aplicados ✅
+### GitHub ✅
+- Repo: https://github.com/Atollom/Bind-RP-Agent
+- Último commit: `fix: Dockerfile usa PORT dinamico de Render`
+- Branch: main, todo sincronizado
 
-### Fix 1 — `backend/config.py`
-Agregados: `BIND_API_KEY_DEV` y `DEV_BYPASS_TOKEN`
+### Vercel (Frontend) ✅
+- URL: https://bind-rp-agent.vercel.app
+- Estado: LIVE, build OK
+- NEXT_PUBLIC_API_URL = https://bind-rp-agent.onrender.com
 
-### Fix 2 — `backend/middleware/auth.py`
-Dev bypass: si `APP_ENV=development` y token == `DEV_BYPASS_TOKEN` → retorna CurrentUser(dev) sin validar JWT
+### Render (Backend FastAPI) ⚠️ REDEPLOY EN CURSO
+- URL: https://bind-rp-agent.onrender.com
+- Servicio ID: srv-d7a7ihfpm1nc73bvppsg
+- PROBLEMA ORIGINAL: Dockerfile tenía `--port 8000` hardcoded, Render usa PORT dinámico
+- FIX APLICADO: CMD ahora usa `${PORT:-8000}`
+- ACCIÓN PENDIENTE: Esperar que Render termine el redeploy (5-10 min)
+- VERIFICAR: curl https://bind-rp-agent.onrender.com/health → debe dar {"status":"healthy"}
 
-### Fix 3 — `backend/routers/chat.py`
-Fallback correcto: usa `settings.BIND_API_KEY_DEV` en vez de placeholder inútil. Lanza 424 si tampoco existe.
+### Neon PostgreSQL ✅
+- URL: ep-icy-brook-amze722b.c-5.us-east-1.aws.neon.tech
+- Tablas: tenants, users, user_roles, bind_erp_keys, usage_logs ✅
+- Funciones: store_bind_key, decrypt_bind_key ✅
+- Tenant dev seed: ID = 00000000-0000-0000-0000-000000000001
 
-### Fix 4 — `frontend/components/AuthProvider.tsx`
-`access_token` ahora usa `NEXT_PUBLIC_DEV_BYPASS_TOKEN` (default: "dev-bypass-2025")
+### UptimeRobot ✅
+- Monitor: https://bind-rp-agent.onrender.com/health
+- Intervalo: 5 min (mantiene Render despierto)
+- Estado: mostraba "Down" por el bug del puerto (se resolverá tras redeploy)
 
-### Fix 5 — Archivos .env creados
-- `backend/.env` — template listo, falta pegar BIND_API_KEY_DEV real
-- `frontend/.env.local` — completo para dev
+## Credenciales clave (están en backend/.env — NO en git)
 
-## Único Paso Pendiente para Pruebas
+| Variable | Valor |
+|----------|-------|
+| DATABASE_URL | postgresql://neondb_owner:npg_DB46INoXlYVh@ep-icy-brook-amze722b... |
+| JWT_SECRET | 4dd1de91e06449979e407c997e2ff28bbc3bdfdd59316b23a195c926a427057b |
+| GEMINI_API_KEY | AIzaSyBBtdMBg8jqoIHjcOMIiybwAp5mO8NDXSg |
+| APP_ENCRYPTION_KEY | 2bd93030b342c1939bd089759f911816 |
+| BIND_API_KEY_DEV | eyJhbGciOiJIUzI1NiIs... (JWT de Bind ERP) |
+| DEV_BYPASS_TOKEN | dev-bypass-2025 |
 
-Editar `backend/.env` línea 8:
-```
-BIND_API_KEY_DEV=PEGA_AQUI_TU_API_KEY_DE_BIND
-```
+## Variables de entorno en Render (verificar que estén todas)
+Ir a: render.com → bind-rp-agent-api → Environment
+Deben estar: DATABASE_URL, JWT_SECRET, GEMINI_API_KEY, APP_ENCRYPTION_KEY,
+BIND_API_KEY_DEV, CORS_ORIGINS, APP_ENV=production, LOG_LEVEL=INFO
 
-## Flujo Completo Post-Fix
-```
-Frontend [token: "dev-bypass-2025"]
-  → Backend auth.py [dev bypass match → CurrentUser(dev-user-001, dev-tenant-001)]
-  → chat.py [decrypt_bind_key falla → usa BIND_API_KEY_DEV del .env]
-  → BindERPClient [GET https://api.bind.com.mx/api/Invoices]
-  → DataAnalystAgent → ReportGeneratorAgent → SupervisorAgent
-  → ChatDashboard [muestra datos reales de Bind]
-```
+## Stack técnico completo
+- Frontend: Next.js 14 + Tailwind → Vercel
+- Backend: FastAPI + Gemini 2.0 Flash → Render (Docker)
+- DB: Neon PostgreSQL (asyncpg)
+- Auth: JWT propio (sin Supabase)
+- Cache: In-memory (Redis opcional)
+- LLM: google-genai SDK, modelos gemini-2.0-flash + gemini-2.5-flash
+- Export: openpyxl (Excel) + reportlab (PDF)
 
-## Cómo Iniciar
+## Pipeline agéntico (4 agentes)
+Router (keywords + Gemini fallback)
+→ DataAnalyst (caché → Bind ERP)
+→ ReportGenerator (Gemini analiza datos reales)
+→ Supervisor (zero data leakage)
 
-### Backend
-```bash
-cd backend
-pip install -r requirements.txt  # si no está instalado
-uvicorn main:app --reload --port 8000
-```
+## Endpoints Bind ERP verificados ✅
+- /Clients → OK (RFC, ClientName, Email)
+- /Products → OK (Code, Title, Cost) — también usado para Inventario
+- /Accounts → OK (contabilidad)
+- /Invoices → OK (vacío en cuenta de prueba)
+- /Warehouses → OK
+- /Inventory → 404 (no existe, usar /Products)
 
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Lo que falta para MVP completo
+1. ✅ Render redeploy con PORT fix → verificar /health
+2. Probar chat end-to-end: Vercel → Render → Bind ERP → Gemini
+3. Crear primer usuario real en Neon (via /api/auth/register en dev mode)
+4. Conectar UptimeRobot al URL correcto: bind-rp-agent.onrender.com
+5. Eliminar servicio duplicado bind-rp-agent-api.onrender.com (si existe)
 
-### Verificar que el backend funciona
-```bash
-curl http://localhost:8000/health
-# Debe retornar: {"status":"healthy","cache_backend":"in-memory",...}
-```
-
-### Probar chat (sin frontend)
-```bash
-curl -X POST http://localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer dev-bypass-2025" \
-  -d '{"message": "muéstrame las facturas"}'
-```
-
-## Lo que NO necesita cambios
-- BindERPClient — endpoints correctos (OData, paginación)
-- CacheManager — in-memory funcional
-- RateLimiter — funcional (200 req/día dev)
-- SupervisorAgent — filtros de seguridad activos
-- ChatDashboard — UI completa, localStorage OK
-- Pipeline 4 agentes — lógica correcta
+## Próxima sesión — qué hacer PRIMERO
+1. Leer este checkpoint
+2. Verificar: curl https://bind-rp-agent.onrender.com/health
+3. Si OK → probar chat desde Vercel con pregunta "muéstrame mis clientes"
+4. Si sigue 404/timeout → revisar logs en Render dashboard
