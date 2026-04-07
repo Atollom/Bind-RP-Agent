@@ -66,15 +66,21 @@ class BindERPClient:
                 return {"error": True, "code": 404, "message": f"El recurso '{endpoint}' no fue encontrado en Bind ERP."}
 
             if response.status_code == 429:
-                logger.critical(f"[Tenant {self.tenant_id}] LÍMITE DE PETICIONES ALCANZADO (429). DETENER OPERACIONES.")
-                return {"error": True, "code": 429, "message": "Se alcanzó el límite diario de 20,000 peticiones de Bind ERP. Intenta mañana."}
+                logger.critical(f"[Tenant {self.tenant_id}] LÍMITE DE PETICIONES ALCANZADO (429).")
+                return {"error": True, "code": 429, "message": "Se alcanzó el límite diario de Bind ERP (10,000 peticiones). Intenta mañana."}
 
             if response.status_code >= 500:
                 logger.error(f"[Tenant {self.tenant_id}] Error interno de Bind ERP ({response.status_code}).")
                 return {"error": True, "code": response.status_code, "message": "Bind ERP no está respondiendo. Intenta en unos minutos."}
 
             response.raise_for_status()
-            return response.json()
+            body = response.json()
+
+            # Bind ERP envuelve los registros en {"value": [...], "nextLink": "...", "count": N}
+            # Extraemos el array directamente para normalizar la respuesta
+            if isinstance(body, dict) and "value" in body:
+                return body["value"]
+            return body
 
         except httpx.TimeoutException:
             logger.error(f"[Tenant {self.tenant_id}] Timeout al consultar {endpoint}")
