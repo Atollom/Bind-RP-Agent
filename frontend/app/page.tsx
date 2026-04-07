@@ -57,7 +57,7 @@ function DashboardContent() {
 
 function ComingSoonContent({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="flex-1 flex items-center justify-center text-textPrimary/40">
+    <div className="h-full flex items-center justify-center text-textPrimary/40">
       <div className="text-center">
         <p className="text-4xl mb-3">🚧</p>
         <p className="text-lg font-semibold">{title}</p>
