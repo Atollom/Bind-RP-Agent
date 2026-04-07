@@ -4,17 +4,15 @@ POST /api/auth/login  → retorna access_token
 POST /api/auth/register → crea usuario (solo en dev por ahora)
 """
 import jwt
+import bcrypt
 import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
-from passlib.context import CryptContext
 from config import get_settings
 
 logger = logging.getLogger("atollom.auth_router")
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 TOKEN_EXPIRE_HOURS = 24 * 7  # 7 días
 
@@ -72,7 +70,7 @@ async def login(req: LoginRequest):
         logger.error(f"Login DB error: {e}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Servicio no disponible.")
 
-    if not row or not pwd_context.verify(req.password, row["hashed_password"]):
+    if not row or not bcrypt.checkpw(req.password.encode(), row["hashed_password"].encode()):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales incorrectas.")
 
     token = _create_token(str(row["id"]), str(row["tenant_id"]), row["role"])
