@@ -6,6 +6,8 @@ import KPICards from "@/components/KPICards";
 import AuthProvider from "@/components/AuthProvider";
 import MultiChartVisualizer from "@/components/MultiChartVisualizer";
 import AdminPanel from "@/components/AdminPanel";
+import ModuleView from "@/components/ModuleView";
+import SupportChat from "@/components/SupportChat";
 
 // Datos de ejemplo para el dashboard principal (vendrán del backend en producción)
 const weeklySalesData = [
@@ -80,19 +82,19 @@ function AppContent() {
       case "chat":
         return <ChatDashboard />;
       case "ventas":
-        return <ComingSoonContent title="Módulo de Ventas" />;
+        return <ModuleView moduleId="VENTAS" title="Ventas y Facturación" query="dame todas mis facturas y ventas recientes" chartType="bar" />;
       case "inventario":
-        return <ComingSoonContent title="Módulo de Inventario" />;
+        return <ModuleView moduleId="INVENTARIO" title="Inventario y Productos" query="muéstrame mi inventario completo con existencias" chartType="bar" />;
       case "compras":
-        return <ComingSoonContent title="Módulo de Compras" />;
+        return <ModuleView moduleId="COMPRAS" title="Compras y Proveedores" query="muéstrame mis órdenes de compra y proveedores" chartType="bar" />;
       case "contabilidad":
-        return <ComingSoonContent title="Módulo de Contabilidad" />;
+        return <ModuleView moduleId="CONTABILIDAD" title="Contabilidad" query="muéstrame mis cuentas contables" chartType="pie" />;
       case "directorio":
-        return <ComingSoonContent title="Módulo de Directorio" />;
+        return <ModuleView moduleId="DIRECTORIO" title="Directorio de Clientes" query="muéstrame todos mis clientes del directorio" chartType="bar" />;
       case "admin":
         return <AdminPanel />;
       case "soporte":
-        return <ComingSoonContent title="Soporte Atollom" subtitle="Agente de soporte disponible próximamente. Mientras tanto escríbenos a contacto@atollom.com" />;
+        return <SupportChat />;
       default:
         return <DashboardContent />;
     }

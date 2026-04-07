@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Loader2, Trash2, History } from "lucide-react";
+import { Send, Bot, User, Loader2, Trash2, History, FileSpreadsheet, FileText } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import MultiChartVisualizer from "./MultiChartVisualizer";
 import AtollomLogo from "./AtollomLogo";
@@ -14,6 +14,7 @@ interface Message {
   content: string;
   chartData?: any[] | null;
   chart_type?: string;
+  intent?: string;
   is_stale?: boolean;
   timestamp: number;
 }
@@ -64,6 +65,54 @@ function clearChatHistory(): void {
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// =====================================================================
+// EXPORT BUTTONS — aparecen después de respuestas con datos
+// =====================================================================
+function ExportButtons({ data, intent, summary, token, apiUrl }: {
+  data: any[]; intent: string; summary: string; token: string; apiUrl: string;
+}) {
+  const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
+
+  const exportFile = async (format: "excel" | "pdf") => {
+    setExporting(format);
+    try {
+      const res = await fetch(`${apiUrl}/api/export/${format}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title: `Reporte ${intent} — Atollom AI`, intent, data, summary }),
+      });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `atollom_${intent.toLowerCase()}_${Date.now()}.${format === "excel" ? "xlsx" : "pdf"}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Error al generar el reporte.");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10">
+      <span className="text-xs text-textPrimary/40">¿Exportar este reporte?</span>
+      <button onClick={() => exportFile("excel")} disabled={!!exporting}
+        className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all disabled:opacity-50">
+        {exporting === "excel" ? <Loader2 size={11} className="animate-spin" /> : <FileSpreadsheet size={11} />}
+        Excel
+      </button>
+      <button onClick={() => exportFile("pdf")} disabled={!!exporting}
+        className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50">
+        {exporting === "pdf" ? <Loader2 size={11} className="animate-spin" /> : <FileText size={11} />}
+        PDF
+      </button>
+    </div>
+  );
 }
 
 // =====================================================================
@@ -170,6 +219,7 @@ export default function ChatDashboard() {
           staleNotice,
         chartData: data.response?.chartData,
         chart_type: data.response?.chart_type || "bar",
+        intent: data.intent,
         is_stale: data.is_stale,
         timestamp: Date.now(),
       };
@@ -299,6 +349,14 @@ export default function ChatDashboard() {
                   <MultiChartVisualizer
                     data={msg.chartData}
                     chartType={msg.chart_type || "bar"}
+                  />
+                  {/* Export buttons */}
+                  <ExportButtons
+                    data={msg.chartData}
+                    intent={msg.intent || "DATOS"}
+                    summary={msg.content}
+                    token={session?.access_token}
+                    apiUrl={process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}
                   />
                 </div>
               )}
